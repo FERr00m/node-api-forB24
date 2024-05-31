@@ -302,13 +302,13 @@ export default class CRest {
     if (this.C_REST_LOGS_DIR) {
       path = this.C_REST_LOGS_DIR;
     } else {
-      if (!fs.existsSync(__dirname + '/logs/')) {
-        fs.mkdirSync(__dirname + '/logs/');
+      if (!fs.existsSync(__dirname + 'logs/')) {
+        fs.mkdirSync(__dirname + 'logs/');
       }
-      path = __dirname + '/logs/';
+      path = __dirname + 'logs/';
     }
     let d = new Date();
-    path += d.toLocaleDateString() + '/';
+    path += d.toLocaleDateString().replaceAll(/[:\./]/g, '_') + '/';
 
     if (!fs.existsSync(path)) {
       fs.mkdirSync(path);
