@@ -14,9 +14,37 @@ const home = async (req, res) => {
     PARAMS: { ass: 1 },
     MODULE_ID: 'application',
   });
-  console.log(r);
+  console.log('request', r);
 
   return res.send(JSON.stringify({ hello: 'world' }));
+};
+
+const install = async (req, res) => {
+
+  let body = req.body;
+  let query = req.query;
+
+  let params = Object.assign({}, body, query)
+
+  console.log('body', body)
+  console.log('query', query)
+  console.log('params', params)
+  const CRestClient = new CRest(
+    params,
+    'local.664de05b68bf64.57416231',
+    'FDvJftqFlUHu44iUhu4e6JLd0ynkxO5xpXckuEmBZBNGtnBzxS'
+  );
+
+  CRestClient.installApp();
+
+  let r = CRestClient.call('pull.application.event.add', {
+    COMMAND: 'HI',
+    PARAMS: { ass: 1 },
+    MODULE_ID: 'application',
+  });
+  console.log('request', r);
+
+  return res.json({ hello: 's' });
 };
 
 const notFound = (req, res) => res.status(404).json({ error: '404' });
@@ -42,5 +70,6 @@ export default {
   notFound,
   serverError,
   headers,
+  install,
   api,
 };
