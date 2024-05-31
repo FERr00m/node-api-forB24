@@ -1,0 +1,1 @@
+{"params":{"method":"pull.application.event.add","params":{"COMMAND":"HI","PARAMS":{"ass":1},"MODULE_ID":"application"}}}
