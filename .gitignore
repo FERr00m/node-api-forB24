@@ -1,9 +1,0 @@
-node_modules
-.env
-coverage
-var
-*.crt
-*.key
-**/logs
-.log
-logs/
