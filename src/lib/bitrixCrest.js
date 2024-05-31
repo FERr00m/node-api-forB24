@@ -167,7 +167,7 @@ export default class CRest {
         this.setLog(
           {
             url: url,
-            info: info,
+            //info: info,
             params: arParams,
             result: result,
           },
@@ -315,7 +315,12 @@ export default class CRest {
     }
 
     path +=
-      Date.now() + '_' + type + '_' + this.randomInteger(1, 9999999) + 'log';
+      new Date(Date.now()).toLocaleTimeString().replaceAll(':', '_') +
+      '_' +
+      type +
+      '_' +
+      this.randomInteger(1, 9999999) +
+      'log';
 
     try {
       fs.writeFileSync(path + '.txt', JSON.stringify(arData));
