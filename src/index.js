@@ -66,6 +66,8 @@ app.enable('trust proxy');
 
 // Маршруты get
 app.get('/', cors(corsOptions), handlers.home);
+// Маршруты get
+app.get('/event/:signal', cors(corsOptions), handlers.event);
 
 // Маршруты post
 app.post('/install', cors(corsOptions), handlers.install);

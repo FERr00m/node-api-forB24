@@ -73,10 +73,12 @@ export default class CRest {
   async callCurl(arParams) {
     let arSettings = this._getAppSettings();
     console.log(chalk.red('arSettings'), arSettings);
+    console.log(chalk.blue('arParams'), arParams);
     let url;
-    if (arSettings !== false) {
+    let result;
+    if (arSettings !== false && typeof arSettings !== 'undefined') {
       if (arParams['this_auth'] && arParams['this_auth'] == 'Y') {
-        url = 'https://oauth.bitrix.info/oauth/token/';
+        url = 'https://oauth.bitrix.info/oauth/token/?';
       } else {
         url =
           arSettings['client_endpoint'] +
@@ -89,53 +91,38 @@ export default class CRest {
       }
 
       try {
-        let { data } = await axios.post(url, arParams['params'], {
-          headers: {
-            'User-agent': 'Bitrix24 CRest PHP ' + this.VERSION,
-          },
-        });
+        let data;
+        if (arParams['this_auth'] && arParams['this_auth'] == 'Y') {
+          let reqParams = url + new URLSearchParams(arParams['params']).toString();
+          console.log('3333333333',reqParams)
+          data = (await axios.get(reqParams)).data;
+        } else {
+          data = (await axios.post(url, arParams['params'], {
+            headers: {
+              'User-agent': 'Bitrix24 CRest PHP ' + this.VERSION,
+            },
+          })).data;
+        }
+
 
         console.log('data', data);
+        this.setLog(
+          {
+            url: url,
+            params: arParams,
+            result: data,
+          },
+          'callCurl'
+        );
 
-        // $obCurl = curl_init();
-        // curl_setopt($obCurl, CURLOPT_URL, $url);
-        // curl_setopt($obCurl, CURLOPT_RETURNTRANSFER, true);
-        // curl_setopt($obCurl, CURLOPT_POSTREDIR, 10);
-        // curl_setopt($obCurl, CURLOPT_USERAGENT, 'Bitrix24 CRest PHP ' . static::VERSION);
-        // if($sPostFields)
-        // {
-        // 	curl_setopt($obCurl, CURLOPT_POST, true);
-        // 	curl_setopt($obCurl, CURLOPT_POSTFIELDS, $sPostFields);
-        // }
-        // curl_setopt(
-        // 	$obCurl, CURLOPT_FOLLOWLOCATION, (isset($arParams[ 'followlocation' ]))
-        // 	? $arParams[ 'followlocation' ] : 1
-        // );
-        // if(defined("C_REST_IGNORE_SSL") && C_REST_IGNORE_SSL === true)
-        // {
-        // 	curl_setopt($obCurl, CURLOPT_SSL_VERIFYPEER, false);
-        // 	curl_setopt($obCurl, CURLOPT_SSL_VERIFYHOST, false);
-        // }
-        // $out = curl_exec($obCurl);
-        // $info = curl_getinfo($obCurl);
-        // if(curl_errno($obCurl))
-        // {
-        // 	$info[ 'curl_error' ] = curl_error($obCurl);
-        // }
-        // if(static::TYPE_TRANSPORT == 'xml' && (!isset($arParams[ 'this_auth' ]) || $arParams[ 'this_auth' ] != 'Y'))//auth only json support
-        // {
-        // 	$result = $out;
-        // }
-        // else
-        // {
-        // 	$result = static::expandData($out);
-        // }
-        // curl_close($obCurl);
-
+        return data;
+      } catch (e) {
+        this.setLog(e, 'exceptionCurl');
+        console.log(e.response)
         let arErrorInform;
-        if (data['error']) {
-          if (data['error'] == 'expired_token' && !arParams['this_auth']) {
-            result = this.GetNewAuth(arParams);
+        if (e.response.status === 401) {
+          if (e.response.data.error == 'expired_token' && !arParams['this_auth']) {
+            this._GetNewAuth(arParams);
           } else {
             arErrorInform = {
               expired_token:
@@ -153,30 +140,22 @@ export default class CRest {
                 'Some setup error b24, check in table "b_module_to_module" event "OnRestCheckAuth"',
               INTERNAL_SERVER_ERROR: 'Server down, try later',
             };
-            if (arErrorInform[result['error']]) {
-              result['error_information'] = arErrorInform[result['error']];
+            if (arErrorInform[e.response.data.error]) {
+              result['error_information'] = arErrorInform[e.response.data.error];
             }
           }
+
+          this.setLog(
+            {
+              url: url,
+              //info: info,
+              params: arParams,
+              result: result,
+            },
+            'callCurl'
+          );
         }
-        // if(!empty($info[ 'curl_error' ]))
-        // {
-        // 	$result[ 'error' ] = 'curl_error';
-        // 	$result[ 'error_information' ] = $info[ 'curl_error' ];
-        // }
 
-        this.setLog(
-          {
-            url: url,
-            //info: info,
-            params: arParams,
-            result: result,
-          },
-          'callCurl'
-        );
-
-        return result;
-      } catch (e) {
-        this.setLog(e, 'exceptionCurl');
 
         return {
           error: 'exception',
@@ -198,17 +177,18 @@ export default class CRest {
     };
   }
 
-  call(method, params = {}) {
+  async call(method, params = {}) {
     let arPost = {
       method: method,
       params: params,
     };
 
-    let result = this.callCurl(arPost);
+    let result = await this.callCurl(arPost);
     return result;
   }
 
-  _GetNewAuth(arParams) {
+  async _GetNewAuth(arParams) {
+    console.log('_GetNewAuth(arParams)', arParams )
     let result = {};
     let arSettings = this._getAppSettings();
     if (arSettings !== false) {
@@ -221,8 +201,11 @@ export default class CRest {
           refresh_token: arSettings['refresh_token'],
         },
       };
-      let newData = this.callCurl(arParamsAuth);
+      let newData = await this.callCurl(arParamsAuth);
 
+
+
+      console.log(chalk.yellow('newData'), newData);
       if (this._setAppSettings(newData)) {
         arParams['this_auth'] = 'N';
         result = this.callCurl(arParams);
@@ -235,7 +218,7 @@ export default class CRest {
     let result = false;
     if (typeof arSettings !== 'undefined') {
       let oldData = this._getAppSettings();
-      if (isInstall != true && !oldData && typeof oldData !== 'undefined') {
+      if (isInstall != true && oldData && typeof oldData !== 'undefined') {
         arSettings = Object.assign({}, oldData, arSettings);
       }
       result = this._setSettingData(arSettings);
@@ -262,9 +245,9 @@ export default class CRest {
 
   _getSettingData() {
     let result = {};
-    if (fs.existsSync(__dirname + '/settings.json')) {
+    if (fs.existsSync(__dirname + '/settings/settings.json')) {
       result = JSON.parse(
-        fs.readFileSync(__dirname + '/settings.json', 'utf8')
+        fs.readFileSync(__dirname + '/settings/settings.json', 'utf8')
       );
 
       if (this.C_REST_CLIENT_ID && this.C_REST_CLIENT_ID !== '') {
@@ -278,12 +261,12 @@ export default class CRest {
   }
 
   _setSettingData(arSettings) {
-    let dir = __dirname + '/settings.json';
+    let dir = __dirname + 'settings/';
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir);
     }
     try {
-      fs.writeFileSync(dir, arSettings);
+      fs.writeFileSync(dir + 'settings.json', JSON.stringify(arSettings));
       return true;
     } catch (err) {
       console.error(err);
